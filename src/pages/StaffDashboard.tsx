@@ -1,39 +1,55 @@
-import React, { useEffect, useState, useRef } from 'react';
-import { 
-  Navigation, 
-  MapPin, 
-  Play, 
-  CheckCircle2, 
-  Clock, 
-  FileText, 
-  Camera, 
-  Loader2, 
-  User, 
+import React, { useEffect, useState, useRef, useMemo } from "react";
+import {
+  Navigation,
+  MapPin,
+  CheckCircle2,
+  Clock,
+  Loader2,
+  User,
+  ListTodo,
+  CheckSquare,
+  Wallet,
   Calendar,
-  AlertCircle
-} from 'lucide-react';
-import { staffService } from '../services/staffService';
-import { StaffBooking, BookingStatus } from '../types';
-import { Button } from '../components/Button';
-import { Badge } from '../components/Badge';
-import { Modal } from '../components/Modal';
-import { Input } from '../components/Input';
-import { toast, Toaster } from 'sonner';
-import { motion, AnimatePresence } from 'motion/react';
-import { cn } from '../lib/utils';
+  Banknote,
+  MessageSquare,
+  ChevronRight,
+} from "lucide-react";
+import { staffService } from "../services/staffServiceDashboard";
+import { StaffBooking, BookingStatus } from "../types";
+import { Button } from "../components/Button";
+import { Badge } from "../components/Badge";
+import { Modal } from "../components/Modal";
+import { toast, Toaster } from "sonner";
+import { motion, AnimatePresence } from "framer-motion";
+import { cn } from "../lib/utils";
 
 const StaffDashboard: React.FC = () => {
   const [bookings, setBookings] = useState<StaffBooking[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [activeBookingId, setActiveBookingId] = useState<number | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [notes, setNotes] = useState('');
-  const [beforePhoto, setBeforePhoto] = useState<string | null>(null);
-  const [afterPhoto, setAfterPhoto] = useState<string | null>(null);
+  const [notes, setNotes] = useState("");
   const [isCompleting, setIsCompleting] = useState(false);
   const [timer, setTimer] = useState(0);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const watchIdRef = useRef<number | null>(null);
+
+  // إحصائيات سريعة
+  const stats = useMemo(() => {
+    const safeBookings = Array.isArray(bookings) ? bookings : [];
+    return {
+      total: safeBookings.length,
+      completed: safeBookings.filter((b) => b.status === "completed").length,
+      cashToCollect: safeBookings
+        .filter(
+          (b) =>
+            (b.payment_status === "cash_on_hand" ||
+              b.payment_status === "unpaid") &&
+            b.status !== "completed",
+        )
+        .reduce((acc, curr) => acc + Number(curr.total_price || 0), 0),
+    };
+  }, [bookings]);
 
   useEffect(() => {
     fetchBookings();
@@ -45,320 +61,350 @@ const StaffDashboard: React.FC = () => {
 
   const fetchBookings = async () => {
     try {
-      const data = await staffService.getMyBookings();
-      setBookings(data);
+      setIsLoading(true);
+      const response = await staffService.getMyBookings();
+      if (response?.data) setBookings(response.data);
     } catch (error) {
-      toast.error('Failed to load tasks');
+      toast.error("Could not load assignments");
     } finally {
       setIsLoading(false);
     }
   };
 
   const startTracking = () => {
-    if ('geolocation' in navigator) {
+    if ("geolocation" in navigator) {
       watchIdRef.current = navigator.geolocation.watchPosition(
-        (position) => {
-          const { latitude, longitude } = position.coords;
-          staffService.sendLocation(latitude, longitude);
-        },
-        (error) => {
-          console.error('Geolocation error:', error);
-          toast.error('Unable to track location. Please check permissions.');
-        },
-        { enableHighAccuracy: true }
+        (p) => staffService.sendLocation(p.coords.latitude, p.coords.longitude),
+        () => toast.error("Please enable GPS"),
+        { enableHighAccuracy: true },
       );
     }
   };
 
-  const stopTracking = () => {
-    if (watchIdRef.current !== null) {
-      navigator.geolocation.clearWatch(watchIdRef.current);
-      watchIdRef.current = null;
-    }
-  };
-
+  const stopTracking = () =>
+    watchIdRef.current && navigator.geolocation.clearWatch(watchIdRef.current);
   const startTimer = () => {
     setTimer(0);
-    timerRef.current = setInterval(() => {
-      setTimer((prev) => prev + 1);
-    }, 1000);
+    timerRef.current = setInterval(() => setTimer((p) => p + 1), 1000);
   };
+  const stopTimer = () => timerRef.current && clearInterval(timerRef.current);
 
-  const stopTimer = () => {
-    if (timerRef.current) {
-      clearInterval(timerRef.current);
-      timerRef.current = null;
-    }
-  };
-
-  const formatTime = (seconds: number) => {
-    const hrs = Math.floor(seconds / 3600);
-    const mins = Math.floor((seconds % 3600) / 60);
-    const secs = seconds % 60;
-    return `${hrs.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
-  };
-
-  const handleStartJourney = async (id: number) => {
+  const handleUpdateStatus = async (id: number, newStatus: BookingStatus) => {
     try {
-      await staffService.updateBookingStatus(id, 'on_the_way');
-      setBookings((prev) => prev.map((b) => (b.id === id ? { ...b, status: 'on_the_way' } : b)));
-      setActiveBookingId(id);
-      startTracking();
-      toast.success('Journey started! Tracking location.');
-    } catch (error) {
-      toast.error('Failed to update status');
+      await staffService.updateBookingStatus(id, newStatus);
+      setBookings((prev) =>
+        prev.map((b) => (b.id === id ? { ...b, status: newStatus } : b)),
+      );
+      if (newStatus === "on_the_way") startTracking();
+      if (newStatus === "in_progress") {
+        stopTracking();
+        startTimer();
+      }
+      toast.success(`Status updated to ${newStatus.replace("_", " ")}`);
+    } catch (e) {
+      toast.error("Update failed");
     }
-  };
-
-  const handleArrived = async (id: number) => {
-    try {
-      await staffService.updateBookingStatus(id, 'in_progress');
-      setBookings((prev) => prev.map((b) => (b.id === id ? { ...b, status: 'in_progress' } : b)));
-      stopTracking();
-      startTimer();
-      toast.success('Arrived! Work timer started.');
-    } catch (error) {
-      toast.error('Failed to update status');
-    }
-  };
-
-  const handleFinish = (id: number) => {
-    setActiveBookingId(id);
-    setIsModalOpen(true);
   };
 
   const handleCompleteOrder = async () => {
     if (!activeBookingId) return;
     setIsCompleting(true);
     try {
-      await staffService.completeBooking(activeBookingId, {
-        notes,
-        beforePhoto: beforePhoto || undefined,
-        afterPhoto: afterPhoto || undefined,
-      });
-      setBookings((prev) => prev.map((b) => (b.id === activeBookingId ? { ...b, status: 'completed' } : b)));
-      stopTimer();
+      await staffService.completeBooking(activeBookingId, { notes });
+      setBookings((prev) =>
+        prev.map((b) =>
+          b.id === activeBookingId ? { ...b, status: "completed" } : b,
+        ),
+      );
+      toast.success("Job marked as finished");
       setIsModalOpen(false);
-      setNotes('');
-      setBeforePhoto(null);
-      setAfterPhoto(null);
-      setActiveBookingId(null);
-      toast.success('Order completed successfully!');
-    } catch (error) {
-      toast.error('Failed to complete order');
+      setNotes("");
+      stopTimer();
+    } catch (e) {
+      toast.error("Failed to complete job");
     } finally {
       setIsCompleting(false);
     }
   };
 
-  const getStatusBadge = (status: BookingStatus) => {
-    switch (status) {
-      case 'on_the_way':
-        return <Badge variant="info">On the Way</Badge>;
-      case 'in_progress':
-        return <Badge variant="warning">In Progress</Badge>;
-      case 'completed':
-        return <Badge variant="success">Completed</Badge>;
-      default:
-        return <Badge variant="neutral">Confirmed</Badge>;
-    }
-  };
-
-  if (isLoading) {
+  if (isLoading)
     return (
-      <div className="flex h-[60vh] items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-emerald-solid" />
+      <div className="flex h-screen flex-col items-center justify-center bg-slate-50/50">
+        <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+        <p className="mt-4 text-sm font-medium text-slate-500">
+          Loading schedule...
+        </p>
       </div>
     );
-  }
 
   return (
-    <div className="space-y-10">
-      <Toaster position="top-right" />
-      
-      <div className="flex flex-col gap-1">
-        <h1 className="text-2xl font-semibold tracking-tight text-carbon-black">My Tasks</h1>
-        <p className="text-text-description text-sm">Manage your daily service schedule and track your progress.</p>
+    <div className="min-h-screen bg-[#F8FAFC] pb-10">
+      <Toaster position="bottom-center" />
+
+      {/* Top Navigation Bar */}
+      <div className="sticky top-0 z-10 bg-white border-b border-slate-200 px-6 py-4">
+        <div className="mx-auto max-w-3xl flex items-center justify-between">
+          <div>
+            <h1 className="text-xl font-bold text-slate-900">Work Console</h1>
+            <p className="text-xs text-slate-500 font-medium">
+              Manage your daily tasks
+            </p>
+          </div>
+          <Button
+            onClick={fetchBookings}
+            variant="ghost"
+            className="text-blue-600 hover:bg-blue-50 text-xs font-bold"
+          >
+            REFRESH
+          </Button>
+        </div>
       </div>
 
-      <div className="grid grid-cols-1 gap-6">
-        <AnimatePresence>
-          {bookings.map((booking) => (
-            <motion.div 
-              key={booking.id}
-              layout
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              className={cn(
-                "relative overflow-hidden rounded-xl border bg-white p-6 shadow-sm transition-all duration-300 hover:bg-emerald-tint/5",
-                booking.status === 'on_the_way' ? 'border-emerald-solid/20' : 
-                booking.status === 'in_progress' ? 'border-emerald-solid' : 'border-border-light'
-              )}
-            >
-              <div className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
-                <div className="space-y-4">
-                  <div className="flex items-center gap-4">
-                    <div className="h-12 w-12 rounded-xl bg-bg-surface flex items-center justify-center border border-border-light shadow-sm">
-                      <User className="h-6 w-6 text-carbon-black" />
+      <div className="mx-auto max-w-3xl px-6 pt-8 space-y-8">
+        {/* Stats Grid */}
+        <div className="grid grid-cols-3 gap-4">
+          <StatBox
+            label="Total Tasks"
+            value={stats.total}
+            icon={<ListTodo size={16} />}
+            color="blue"
+          />
+          <StatBox
+            label="Finished"
+            value={stats.completed}
+            icon={<CheckSquare size={16} />}
+            color="emerald"
+          />
+          <StatBox
+            label="Cash"
+            value={`${stats.cashToCollect}`}
+            icon={<Wallet size={16} />}
+            color="rose"
+          />
+        </div>
+
+        {/* Task List */}
+        <div className="space-y-6">
+          <h2 className="text-sm font-bold text-slate-400 uppercase tracking-widest">
+            Ongoing Schedule
+          </h2>
+
+          <AnimatePresence mode="popLayout">
+            {bookings.length > 0 ? (
+              bookings.map((booking) => (
+                <motion.div
+                  key={booking.id}
+                  layout
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="group relative bg-white rounded-3xl border border-slate-200 shadow-sm hover:shadow-md transition-all overflow-hidden"
+                >
+                  {/* Status Indicator Bar */}
+                  <div
+                    className={cn(
+                      "absolute left-0 top-0 bottom-0 w-1.5",
+                      booking.status === "in_progress"
+                        ? "bg-amber-400"
+                        : booking.status === "completed"
+                          ? "bg-emerald-400"
+                          : "bg-slate-200",
+                    )}
+                  />
+
+                  <div className="p-6">
+                    {/* Row 1: ID & Status */}
+                    <div className="flex items-center justify-between mb-4">
+                      <div className="flex items-center gap-3">
+                        <div className="bg-slate-100 p-2 rounded-xl text-slate-600">
+                          <User size={18} />
+                        </div>
+                        <span className="font-bold text-slate-900">
+                          Task #{booking.id}
+                        </span>
+                      </div>
+                      <Badge
+                        variant="secondary"
+                        className="bg-slate-50 text-slate-600 border-none px-3 py-1 text-[10px] font-bold"
+                      >
+                        {booking.status.replace("_", " ").toUpperCase()}
+                      </Badge>
                     </div>
-                    <div>
-                      <h3 className="text-lg font-semibold text-carbon-black">{booking.customer_name}</h3>
-                      <div className="flex items-center gap-2 text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">
-                        <MapPin className="h-3.5 w-3.5" />
-                        <span>{booking.service_type}</span>
+
+                    {/* Row 2: Location */}
+                    <div className="flex items-start gap-2 mb-6">
+                      <MapPin size={16} className="text-slate-400 mt-0.5" />
+                      <p className="text-sm text-slate-600 font-medium leading-relaxed">
+                        {booking.address}
+                      </p>
+                    </div>
+
+                    {/* Row 3: Time Info */}
+                    <div className="flex gap-4 mb-6">
+                      <div className="bg-slate-50 rounded-2xl p-3 flex-1 border border-slate-100/50">
+                        <p className="text-[10px] text-slate-400 font-bold uppercase mb-1 flex items-center gap-1">
+                          <Clock size={12} /> Start
+                        </p>
+                        <p className="text-sm font-bold text-slate-700">
+                          {booking.start_time}
+                        </p>
+                      </div>
+                      <div className="bg-slate-50 rounded-2xl p-3 flex-1 border border-slate-100/50">
+                        <p className="text-[10px] text-slate-400 font-bold uppercase mb-1 flex items-center gap-1">
+                          <Calendar size={12} /> End
+                        </p>
+                        <p className="text-sm font-bold text-slate-700">
+                          {booking.end_time}
+                        </p>
                       </div>
                     </div>
-                  </div>
-                  
-                  <div className="flex items-center gap-6">
-                    <div className="flex items-center gap-2 text-[11px] font-bold text-slate-400 uppercase tracking-widest">
-                      <Clock className="h-3.5 w-3.5" />
-                      {booking.appointment_time}
-                    </div>
-                    {getStatusBadge(booking.status)}
-                  </div>
-                </div>
 
-                <div className="flex flex-wrap items-center gap-3">
-                  {booking.status === 'confirmed' && (
-                    <Button 
-                      onClick={() => handleStartJourney(booking.id)}
-                      className="btn-emerald h-11 px-8 text-xs"
-                    >
-                      <Navigation className="mr-2 h-4 w-4" /> Start Journey
-                    </Button>
-                  )}
+                    {/* Cash Notice (If applicable) */}
+                    {(booking.payment_status === "cash_on_hand" ||
+                      booking.payment_status === "unpaid") &&
+                      booking.status !== "completed" && (
+                        <div className="mb-6 flex items-center justify-between bg-rose-50/50 border border-rose-100 px-4 py-3 rounded-2xl">
+                          <div className="flex items-center gap-2 text-rose-600">
+                            <Banknote size={18} />
+                            <span className="text-xs font-bold uppercase tracking-tight">
+                              Collect Cash
+                            </span>
+                          </div>
+                          <span className="text-sm font-black text-rose-600">
+                            {booking.total_price} EGP
+                          </span>
+                        </div>
+                      )}
 
-                  {booking.status === 'on_the_way' && (
+                    {/* Action Buttons */}
                     <div className="flex items-center gap-3">
-                      <motion.div
-                        animate={{ scale: [1, 1.02, 1] }}
-                        transition={{ repeat: Infinity, duration: 2 }}
-                        className="flex items-center gap-2.5 rounded-lg bg-white px-4 py-2 text-[11px] font-bold text-emerald-text border border-emerald-solid/20"
-                      >
-                        <div className="h-2 w-2 rounded-full bg-emerald-solid animate-pulse" />
-                        On the Way
-                      </motion.div>
-                      <Button 
-                        onClick={() => handleArrived(booking.id)}
-                        className="bg-carbon-black hover:bg-emerald-solid text-white h-11 px-6 text-xs"
-                      >
-                        <MapPin className="mr-2 h-4 w-4" /> Arrived & Start Work
-                      </Button>
-                    </div>
-                  )}
+                      {booking.status === "confirmed" && (
+                        <Button
+                          onClick={() =>
+                            handleUpdateStatus(booking.id, "on_the_way")
+                          }
+                          className="w-full bg-blue-600 hover:bg-blue-700 text-white rounded-2xl h-12 font-bold transition-transform active:scale-95"
+                        >
+                          Start Trip
+                        </Button>
+                      )}
 
-                  {booking.status === 'in_progress' && (
-                    <div className="flex items-center gap-3">
-                      <div className="flex items-center gap-2.5 rounded-lg bg-white px-4 py-2 text-[11px] font-bold text-amber-600 border border-amber-200">
-                        <Clock className="h-4 w-4 animate-pulse" />
-                        {formatTime(timer)}
-                      </div>
-                      <Button 
-                        onClick={() => handleFinish(booking.id)}
-                        className="btn-emerald h-11 px-6 text-xs"
-                      >
-                        <CheckCircle2 className="mr-2 h-4 w-4" /> Finish & Notes
-                      </Button>
-                    </div>
-                  )}
+                      {booking.status === "on_the_way" && (
+                        <Button
+                          onClick={() =>
+                            handleUpdateStatus(booking.id, "in_progress")
+                          }
+                          className="w-full bg-slate-900 hover:bg-black text-white rounded-2xl h-12 font-bold"
+                        >
+                          I've Arrived
+                        </Button>
+                      )}
 
-                  {booking.status === 'completed' && (
-                    <div className="flex items-center gap-2 text-emerald-solid font-bold text-sm">
-                      <CheckCircle2 className="h-5 w-5" />
-                      Completed
+                      {booking.status === "in_progress" && (
+                        <div className="flex w-full gap-3">
+                          <div className="flex items-center px-4 bg-amber-50 text-amber-700 rounded-2xl font-mono font-bold text-sm">
+                            {Math.floor(timer / 60)}:
+                            {(timer % 60).toString().padStart(2, "0")}
+                          </div>
+                          <Button
+                            onClick={() => {
+                              setActiveBookingId(booking.id);
+                              setIsModalOpen(true);
+                            }}
+                            className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-2xl h-12 font-bold"
+                          >
+                            Finish Mission
+                          </Button>
+                        </div>
+                      )}
+
+                      {booking.status === "completed" && (
+                        <div className="w-full h-12 flex items-center justify-center gap-2 text-emerald-600 font-bold bg-emerald-50 rounded-2xl">
+                          <CheckCircle2 size={18} /> Done
+                        </div>
+                      )}
                     </div>
-                  )}
-                </div>
+                  </div>
+                </motion.div>
+              ))
+            ) : (
+              <div className="text-center py-20 bg-white rounded-3xl border-2 border-dashed border-slate-200">
+                <p className="text-slate-400 font-medium">
+                  No tasks assigned for today.
+                </p>
               </div>
-
-              {booking.status === 'on_the_way' && (
-                <div className="mt-6 flex items-center gap-3 rounded-lg bg-emerald-tint/10 p-4 text-[11px] font-bold text-emerald-text border border-emerald-solid/10">
-                  <AlertCircle className="h-4 w-4" />
-                  <span>GPS Tracking is active. Drive safely to the customer location.</span>
-                </div>
-              )}
-            </motion.div>
-          ))}
-        </AnimatePresence>
+            )}
+          </AnimatePresence>
+        </div>
       </div>
 
+      {/* Simplified Completion Modal (Notes Only) */}
       <Modal
         isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
-        title="Complete Service Order"
+        onClose={() => !isCompleting && setIsModalOpen(false)}
+        title="Finalize Mission"
       >
-        <div className="p-6 space-y-8">
-          <div className="space-y-3">
-            <label className="text-[11px] font-bold uppercase tracking-widest text-slate-400 flex items-center gap-2">
-              <FileText className="h-3.5 w-3.5" />
-              Job Notes
-            </label>
-            <textarea 
-              className="w-full min-h-[140px] rounded-lg border border-border-thin p-4 text-sm text-carbon-gray focus:ring-2 focus:ring-emerald-solid/10 focus:border-emerald-solid outline-none transition-all bg-white placeholder:text-slate-300"
-              placeholder="Describe the work done, any issues encountered, or client requests..."
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-            />
+        <div className="p-6 space-y-6">
+          <div className="flex items-center gap-2 text-slate-500 mb-2">
+            <MessageSquare size={18} />
+            <span className="text-sm font-bold uppercase tracking-tight">
+              Post-Job Notes
+            </span>
           </div>
 
-          <div className="grid grid-cols-2 gap-6">
-            <div className="space-y-3">
-              <label className="text-[11px] font-bold uppercase tracking-widest text-slate-400">Before Photo</label>
-              <div 
-                className={`flex aspect-video cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed transition-all ${
-                  beforePhoto ? 'border-emerald-solid/20 bg-emerald-tint/10' : 'border-border-light hover:border-emerald-solid hover:bg-emerald-tint/20'
-                }`}
-                onClick={() => setBeforePhoto('https://picsum.photos/seed/before/400/300')}
-              >
-                {beforePhoto ? (
-                  <img src={beforePhoto} alt="Before" className="h-full w-full rounded-md object-cover" />
-                ) : (
-                  <>
-                    <Camera className="h-6 w-6 text-slate-300" />
-                    <span className="mt-2 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Upload Before</span>
-                  </>
-                )}
-              </div>
-            </div>
-            <div className="space-y-3">
-              <label className="text-[11px] font-bold uppercase tracking-widest text-slate-400">After Photo</label>
-              <div 
-                className={`flex aspect-video cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed transition-all ${
-                  afterPhoto ? 'border-emerald-solid/20 bg-emerald-tint/10' : 'border-border-light hover:border-emerald-solid hover:bg-emerald-tint/20'
-                }`}
-                onClick={() => setAfterPhoto('https://picsum.photos/seed/after/400/300')}
-              >
-                {afterPhoto ? (
-                  <img src={afterPhoto} alt="After" className="h-full w-full rounded-md object-cover" />
-                ) : (
-                  <>
-                    <Camera className="h-6 w-6 text-slate-300" />
-                    <span className="mt-2 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Upload After</span>
-                  </>
-                )}
-              </div>
-            </div>
-          </div>
+          <textarea
+            className="w-full h-40 rounded-2xl border border-slate-200 p-4 text-sm font-medium outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-400 transition-all resize-none"
+            placeholder="Write a brief summary of what was done or any issues encountered..."
+            value={notes}
+            onChange={(e) => setNotes(e.target.value)}
+          />
 
-          <div className="flex justify-end gap-3 pt-6 border-t border-border-light">
-            <Button variant="ghost" onClick={() => setIsModalOpen(false)} className="text-xs">Cancel</Button>
-            <Button 
-              onClick={handleCompleteOrder} 
-              disabled={isCompleting || !notes}
-              className="btn-emerald min-w-[140px] px-6 text-xs h-10"
+          <div className="flex gap-3 pt-2">
+            <Button
+              variant="ghost"
+              onClick={() => setIsModalOpen(false)}
+              className="flex-1 h-12 rounded-xl text-slate-400 font-bold"
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleCompleteOrder}
+              disabled={isCompleting || !notes.trim()}
+              className="flex-1 h-12 rounded-xl bg-blue-600 text-white font-bold disabled:bg-slate-100 disabled:text-slate-400"
             >
               {isCompleting ? (
-                <>
-                  <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" /> Completing...
-                </>
+                <Loader2 className="h-5 w-5 animate-spin mx-auto" />
               ) : (
-                'Finish Order'
+                "Submit & Close"
               )}
             </Button>
           </div>
         </div>
       </Modal>
+    </div>
+  );
+};
+
+// UI Helper Components
+const StatBox = ({ label, value, icon, color }: any) => {
+  const colors = {
+    blue: "bg-blue-50 text-blue-600",
+    emerald: "bg-emerald-50 text-emerald-600",
+    rose: "bg-rose-50 text-rose-600",
+  };
+  return (
+    <div className="bg-white p-4 rounded-3xl border border-slate-100 shadow-sm flex flex-col items-center">
+      <div
+        className={cn(
+          "h-8 w-8 rounded-full flex items-center justify-center mb-2",
+          colors[color as keyof typeof colors],
+        )}
+      >
+        {icon}
+      </div>
+      <span className="text-[10px] font-bold text-slate-400 uppercase mb-1">
+        {label}
+      </span>
+      <span className="text-sm font-black text-slate-900">{value}</span>
     </div>
   );
 };
