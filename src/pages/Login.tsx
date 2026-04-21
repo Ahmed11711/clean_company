@@ -24,10 +24,8 @@ const Login: React.FC = () => {
       // المناداة على الـ API الحقيقي عبر الخدمة
       const data = await authService.login(credentials);
 
-      // تخزين التوكن والبيانات الأساسية (تأكد من مطابقة المسميات مع الباك اند الخاص بك)
-      // عادة الباك اند يرسل access_token أو token
+      // تخزين التوكن والبيانات الأساسية
       localStorage.setItem("token", data.access_token || (data as any).token);
-
       localStorage.setItem("role", data.user.role);
       localStorage.setItem("user_name", data.user.name);
 
@@ -54,15 +52,25 @@ const Login: React.FC = () => {
 
       <div className="w-full max-w-md space-y-8">
         <div className="text-center">
-          <div className="mx-auto h-16 w-16 rounded-xl bg-carbon-black flex items-center justify-center mb-6 shadow-xl shadow-carbon-black/10 transform hover:scale-105 transition-transform">
+          {/* --- قسم اللوجو المعدل --- */}
+          <div
+            className="mx-auto h-16 w-16 rounded-2xl bg-carbon-black flex items-center justify-center mb-6 transform hover:scale-105 transition-all duration-300 ease-out border border-carbon-black"
+            // إضافة ظل توهج (Glow) باللون السماوي الجديد
+            style={{
+              boxShadow: "0 10px 30px -5px rgba(74, 184, 233, 0.3)",
+            }}
+          >
             <span
-              className="text-white font-bold text-2xl tracking-tighter"
+              // تغيير لون حرف C للون السماوي #4AB8E9
+              className="text-[#4AB8E9] font-bold text-3xl tracking-tighter"
               style={{ fontFamily: "'Brush Script MT', cursive" }}
             >
-              C
+              Cleany
             </span>
           </div>
-          <h2 className="text-2xl font-semibold tracking-tight text-carbon-black">
+          {/* ------------------------- */}
+
+          <h2 className="text-2xl font-bold tracking-tight text-carbon-black">
             Welcome back
           </h2>
           <p className="text-text-description mt-1 text-sm">
@@ -70,7 +78,7 @@ const Login: React.FC = () => {
           </p>
         </div>
 
-        <div className="bg-white p-8 rounded-xl shadow-sm border border-border-light">
+        <div className="bg-white p-8 rounded-2xl shadow-sm border border-border-light">
           <form className="space-y-6" onSubmit={handleLogin}>
             <div className="space-y-4">
               <Input
@@ -82,7 +90,7 @@ const Login: React.FC = () => {
                 onChange={(e) => setEmail(e.target.value)}
                 required
                 disabled={isLoading}
-                icon={<Mail className="h-4 w-4" />}
+                icon={<Mail className="h-4 w-4 text-slate-400" />}
               />
               <Input
                 label="Password"
@@ -93,7 +101,7 @@ const Login: React.FC = () => {
                 onChange={(e) => setPassword(e.target.value)}
                 required
                 disabled={isLoading}
-                icon={<Lock className="h-4 w-4" />}
+                icon={<Lock className="h-4 w-4 text-slate-400" />}
               />
             </div>
 
@@ -102,7 +110,8 @@ const Login: React.FC = () => {
                 <input
                   id="remember-me"
                   type="checkbox"
-                  className="h-4 w-4 rounded border-border-light text-emerald-solid focus:ring-emerald-solid/20 transition-all cursor-pointer"
+                  // التأكد من أن حقل الاختيار يستخدم اللون السماوي عند التفعيل
+                  className="h-4 w-4 rounded border-border-light text-[#4AB8E9] focus:ring-[#4AB8E9]/20 transition-all cursor-pointer"
                 />
                 <label
                   htmlFor="remember-me"
@@ -114,7 +123,7 @@ const Login: React.FC = () => {
               {/* <Link
                 to="/forgot-password"
                 title="Forgot Password"
-                className="text-xs font-bold text-carbon-black hover:text-emerald-solid transition-colors"
+                className="text-xs font-bold text-carbon-black hover:text-[#4AB8E9] transition-colors"
               >
                 Forgot password?
               </Link> */}
@@ -122,7 +131,8 @@ const Login: React.FC = () => {
 
             <Button
               type="submit"
-              className="w-full h-11 text-xs rounded-lg btn-emerald"
+              // استخدام كلاس btn-emerald الذي قمنا بتعديل لونه في CSS
+              className="w-full h-11 text-xs rounded-lg btn-emerald font-bold"
               isLoading={isLoading}
             >
               Sign In <ArrowRight className="ml-2 h-4 w-4" />
@@ -134,7 +144,8 @@ const Login: React.FC = () => {
           Don't have an account?{" "}
           <a
             href="#"
-            className="font-bold text-carbon-black hover:text-emerald-solid transition-colors"
+            // تغيير لون الرابط عند الهوفر للسماوي
+            className="font-bold text-carbon-black hover:text-[#4AB8E9] transition-colors"
           >
             Contact support
           </a>

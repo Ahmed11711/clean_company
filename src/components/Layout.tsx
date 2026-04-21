@@ -14,6 +14,7 @@ import {
   Star,
   Users,
   Tag,
+  LayoutGrid,
 } from "lucide-react";
 import { cn } from "../lib/utils";
 import { Button } from "./Button";
@@ -25,6 +26,8 @@ const adminNavItems = [
   { icon: LayoutDashboard, label: "Overview", path: "/" },
   { icon: Calendar, label: "Bookings", path: "/bookings" },
   { icon: Briefcase, label: "Services", path: "/services" },
+  { icon: LayoutGrid, label: "Specialties", path: "/specialties" },
+  { icon: LayoutGrid, label: "ServiceItems", path: "/ServiceItems" },
   { icon: Tag, label: "Offers", path: "/offers" },
   { icon: Users, label: "Staff", path: "/staff" },
   { icon: Clock, label: "Availability", path: "/availability" },
@@ -116,7 +119,7 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({
                   className="text-white font-bold text-xs tracking-tighter"
                   style={{ fontFamily: "'Brush Script MT', cursive" }}
                 >
-                  C
+                  Cleany
                 </span>
               </div>
               <span className="text-lg font-bold tracking-tight text-carbon-black">

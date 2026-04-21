@@ -32,6 +32,10 @@ export interface Service {
   updated_at?: string;
 }
 
+export interface Specialty {
+  id: number;
+  name: string;
+}
 export interface Booking {
   id: number;
   user_id?: number;

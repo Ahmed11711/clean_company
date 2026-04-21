@@ -71,35 +71,69 @@ const StaffDashboard: React.FC = () => {
     }
   };
 
-  const startTracking = () => {
+  // --- تحديث: ميثود إرسال الموقع لـ Redis ---
+  const startTracking = (staffId: number) => {
     if ("geolocation" in navigator) {
       watchIdRef.current = navigator.geolocation.watchPosition(
-        (p) => staffService.sendLocation(p.coords.latitude, p.coords.longitude),
-        () => toast.error("Please enable GPS"),
-        { enableHighAccuracy: true },
+        (p) => {
+          // استدعاء السيرفس لإرسال الإحداثيات لـ Laravel -> Redis Cloud
+          staffService
+            .sendLocation(p.coords.latitude, p.coords.longitude, staffId)
+            .catch((err) => console.error("Redis Sync Error:", err));
+        },
+        () => toast.error("Please enable GPS for tracking"),
+        {
+          enableHighAccuracy: true,
+          maximumAge: 0,
+          timeout: 5000,
+        },
       );
     }
   };
 
-  const stopTracking = () =>
-    watchIdRef.current && navigator.geolocation.clearWatch(watchIdRef.current);
+  const stopTracking = () => {
+    if (watchIdRef.current !== null) {
+      navigator.geolocation.clearWatch(watchIdRef.current);
+      watchIdRef.current = null;
+    }
+  };
+
   const startTimer = () => {
     setTimer(0);
     timerRef.current = setInterval(() => setTimer((p) => p + 1), 1000);
   };
-  const stopTimer = () => timerRef.current && clearInterval(timerRef.current);
+
+  const stopTimer = () => {
+    if (timerRef.current) {
+      clearInterval(timerRef.current);
+      timerRef.current = null;
+    }
+  };
 
   const handleUpdateStatus = async (id: number, newStatus: BookingStatus) => {
     try {
       await staffService.updateBookingStatus(id, newStatus);
+
+      // جلب بيانات الحجز الحالي للحصول على staff_id
+      const currentBooking = bookings.find((b) => b.id === id);
+
       setBookings((prev) =>
         prev.map((b) => (b.id === id ? { ...b, status: newStatus } : b)),
       );
-      if (newStatus === "on_the_way") startTracking();
+
+      // --- الربط مع Redis حسب الحالة الجديدة ---
+      if (newStatus === "on_the_way") {
+        if (currentBooking?.staff_id) {
+          startTracking(currentBooking.staff_id);
+          toast.info("Trip started. Your location is being shared.");
+        }
+      }
+
       if (newStatus === "in_progress") {
-        stopTracking();
+        stopTracking(); // توقف عن التتبع عند الوصول لبدء العمل لتوفير البطارية
         startTimer();
       }
+
       toast.success(`Status updated to ${newStatus.replace("_", " ")}`);
     } catch (e) {
       toast.error("Update failed");

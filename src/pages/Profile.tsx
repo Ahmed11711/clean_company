@@ -53,6 +53,7 @@ const Profile: React.FC = () => {
     // تجميع البيانات النصية
     const dataToSend = {
       name: formData.get("name") as string,
+      name_ar: formData.get("name_ar") as string,
       hourly_rate: formData.get("hourly_rate") as string,
       address: formData.get("address") as string,
       description: formData.get("description") as string,
@@ -199,6 +200,16 @@ const Profile: React.FC = () => {
                   defaultValue={profile?.name}
                   required
                 />
+                <Input
+                  label="اسم الشركة (عربي)"
+                  name="name_ar"
+                  defaultValue={profile?.name_ar}
+                  dir="rtl"
+                  placeholder="أدخل اسم الشركة بالعربية"
+                />
+              </div>
+
+              <div className="grid gap-8 sm:grid-cols-2">
                 <Input
                   label="Hourly Rate ($)"
                   name="hourly_rate"

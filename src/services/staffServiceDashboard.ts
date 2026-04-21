@@ -13,7 +13,7 @@ export const staffService = {
   // جلب المهام
   getMyBookings: async (): Promise<ApiResponse<StaffBooking[]>> => {
     const response = await axiosInstance.get('/staff/Dashbaord/bookings');
-    return response.data; // هنا response.data هو الـ Object الكامل
+    return response.data; 
   },
 
   updateBookingStatus: async (id: number, status: BookingStatus) => {
@@ -32,8 +32,16 @@ export const staffService = {
     return response.data;
   },
 
-  sendLocation: async (lat: number, lng: number) => {
-    const response = await axiosInstance.post('/staff/Dashbaord/update-location', { lat, lng });
+  /**
+   * إرسال الموقع اللحظي لـ Redis Cloud عبر الباك أند
+   * تم استخدام axiosInstance لضمان وجود الـ Base URL والـ Tokens
+   */
+  sendLocation: async (lat: number, lng: number, userId: number) => {
+    const response = await axiosInstance.post('/tracking/update', {
+        user_id: userId,
+        lat: lat,
+        lng: lng
+    });
     return response.data;
-  }
+  },
 };

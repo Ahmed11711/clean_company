@@ -5,9 +5,13 @@
   --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
   --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
   
-  --color-emerald-solid: #009E60;
-  --color-emerald-tint: #ECFDF5;
-  --color-emerald-text: #065F46;
+--color-emerald-solid: #4AB8E9; 
+  
+  /* اختيارياً: يمكنك تغيير لون الخلفية الخفيفة (Tint) لتناسب اللون الجديد */
+  --color-emerald-tint: #F0F9FF; 
+  
+  /* اختيارياً: لون النص داخل الأزرار أو التنبيهات */
+  --color-emerald-text: #0369A1;
   
   --color-bg-surface: #F9FAFB;
   --color-card-bg: #FFFFFF;

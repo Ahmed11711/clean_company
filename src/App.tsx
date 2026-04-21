@@ -1,19 +1,22 @@
-import React from 'react';
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import { Layout } from './components/Layout';
-import Dashboard from './pages/Dashboard';
-import StaffDashboard from './pages/StaffDashboard';
-import Services from './pages/Services';
-import Offers from './pages/Offers';
-import Bookings from './pages/Bookings';
-import Profile from './pages/Profile';
-import Availability from './pages/Availability';
-import Staff from './pages/Staff';
-import Login from './pages/Login';
-import ForgotPassword from './pages/ForgotPassword';
+import React from "react";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { Layout } from "./components/Layout";
+import Dashboard from "./pages/Dashboard";
+import StaffDashboard from "./pages/StaffDashboard";
+import Services from "./pages/Services";
+import Offers from "./pages/Offers";
+import Bookings from "./pages/Bookings";
+import Profile from "./pages/Profile";
+import Availability from "./pages/Availability";
+import Staff from "./pages/Staff";
+import Login from "./pages/Login";
+import ForgotPassword from "./pages/ForgotPassword";
+// 1. استيراد الصفحة الجديدة هنا
+import Specialties from "./pages/Specialties";
+import ServiceItems from "./pages/ServiceItems";
 
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
-  const token = localStorage.getItem('token');
+  const token = localStorage.getItem("token");
   if (!token) {
     return <Navigate to="/login" replace />;
   }
@@ -21,8 +24,8 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
 };
 
 const DashboardRouter = () => {
-  const role = localStorage.getItem('role');
-  return role === 'staff' ? <StaffDashboard /> : <Dashboard />;
+  const role = localStorage.getItem("role");
+  return role === "staff" ? <StaffDashboard /> : <Dashboard />;
 };
 
 export default function App() {
@@ -31,14 +34,83 @@ export default function App() {
       <Routes>
         <Route path="/login" element={<Login />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
-        
-        <Route path="/" element={<ProtectedRoute><DashboardRouter /></ProtectedRoute>} />
-        <Route path="/services" element={<ProtectedRoute><Services /></ProtectedRoute>} />
-        <Route path="/offers" element={<ProtectedRoute><Offers /></ProtectedRoute>} />
-        <Route path="/bookings" element={<ProtectedRoute><Bookings /></ProtectedRoute>} />
-        <Route path="/staff" element={<ProtectedRoute><Staff /></ProtectedRoute>} />
-        <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
-        <Route path="/availability" element={<ProtectedRoute><Availability /></ProtectedRoute>} />
+
+        <Route
+          path="/"
+          element={
+            <ProtectedRoute>
+              <DashboardRouter />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/services"
+          element={
+            <ProtectedRoute>
+              <Services />
+            </ProtectedRoute>
+          }
+        />
+
+        {/* 2. إضافة مسار التخصصات هنا مع الحماية */}
+        <Route
+          path="/specialties"
+          element={
+            <ProtectedRoute>
+              <Specialties />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/offers"
+          element={
+            <ProtectedRoute>
+              <Offers />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/bookings"
+          element={
+            <ProtectedRoute>
+              <Bookings />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/staff"
+          element={
+            <ProtectedRoute>
+              <Staff />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/profile"
+          element={
+            <ProtectedRoute>
+              <Profile />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/availability"
+          element={
+            <ProtectedRoute>
+              <Availability />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/ServiceItems"
+          element={
+            <ProtectedRoute>
+              <ServiceItems />
+            </ProtectedRoute>
+          }
+        />
 
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

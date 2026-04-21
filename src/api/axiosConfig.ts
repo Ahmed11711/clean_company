@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_BASE_URL = 'http://127.0.0.1:8000/api/v1/company/'; // استبدله برابط الباك اند الخاص بك
+const API_BASE_URL = 'https://api.cleany.qa/api/v1/company/'; // استبدله برابط الباك اند الخاص بك
 
 const axiosInstance = axios.create({
   baseURL: API_BASE_URL,

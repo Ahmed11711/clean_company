@@ -9,6 +9,7 @@ import {
   Trash2,
   MoreVertical,
   Loader2,
+  Languages,
 } from "lucide-react";
 import { Button } from "../components/Button";
 import { Input } from "../components/Input";
@@ -17,7 +18,7 @@ import { Modal } from "../components/Modal";
 import { Offer } from "../types";
 import { toast, Toaster } from "sonner";
 import { motion, AnimatePresence } from "motion/react";
-import { offerApi } from "../services/offersServcie"; // تأكد من إنشاء هذا الملف
+import { offerApi } from "../services/offersServcie";
 
 const Offers: React.FC = () => {
   const [offers, setOffers] = useState<Offer[]>([]);
@@ -64,7 +65,7 @@ const Offers: React.FC = () => {
     }
   };
 
-  // 3. إرسال العرض الجديد للباك أند
+  // 3. إرسال العرض الجديد (يدعم العربية والإنجليزية)
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setIsSaving(true);
@@ -72,7 +73,6 @@ const Offers: React.FC = () => {
     const form = e.currentTarget;
     const formData = new FormData(form);
 
-    // إضافة الملف الفعلي للـ FormData
     if (selectedFile) {
       formData.append("image", selectedFile);
     }
@@ -84,6 +84,7 @@ const Offers: React.FC = () => {
       setOffers([newOffer, ...offers]);
       setIsModalOpen(false);
       resetForm();
+      form.reset();
       toast.success("Offer published successfully!");
     } catch (error: any) {
       toast.error(error.response?.data?.message || "Failed to publish offer");
@@ -136,11 +137,11 @@ const Offers: React.FC = () => {
 
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight text-carbon-black">
-            Offers & Promotions
+          <h1 className="text-2xl font-semibold tracking-tight text-carbon-black font-arabic">
+            Offers
           </h1>
           <p className="text-text-description mt-1">
-            Create and manage promotional banners for your customers.
+            Manage your promotional banners in both English and Arabic.
           </p>
         </div>
         <Button
@@ -176,23 +177,21 @@ const Offers: React.FC = () => {
                     {offer.category_name || "General"}
                   </Badge>
                 </div>
-                {offer.is_active && (
-                  <div className="absolute top-3 right-3">
-                    <Badge
-                      variant="success"
-                      className="bg-white/90 backdrop-blur-sm text-[10px]"
-                    >
-                      Active
-                    </Badge>
-                  </div>
-                )}
               </div>
 
               <div className="p-5">
                 <div className="flex items-start justify-between gap-2">
-                  <h3 className="text-sm font-semibold text-carbon-black line-clamp-1">
-                    {offer.title}
-                  </h3>
+                  <div>
+                    <h3 className="text-sm font-semibold text-carbon-black line-clamp-1">
+                      {offer.title}
+                    </h3>
+                    <p
+                      className="text-[11px] text-slate-400 font-medium mt-0.5"
+                      dir="rtl"
+                    >
+                      {offer.title_ar}
+                    </p>
+                  </div>
                   <button
                     onClick={() => handleToggleActive(offer.id)}
                     className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${
@@ -206,9 +205,6 @@ const Offers: React.FC = () => {
                     />
                   </button>
                 </div>
-                <p className="mt-2 text-xs text-text-description leading-relaxed line-clamp-2">
-                  {offer.description}
-                </p>
 
                 <div className="mt-6 flex items-center justify-between border-t border-border-light pt-4">
                   <div className="flex items-center gap-2 text-[10px] font-bold text-slate-400 uppercase tracking-widest">
@@ -246,14 +242,14 @@ const Offers: React.FC = () => {
       >
         <form onSubmit={handleSubmit} className="p-6 space-y-8">
           <div className="space-y-6">
-            {/* Image Upload Area */}
+            {/* Image Upload */}
             <div className="space-y-3">
               <label className="text-[11px] font-bold uppercase tracking-widest text-slate-400">
                 Banner Image
               </label>
               <div className="relative">
                 <div
-                  className={`flex aspect-[2/1] flex-col items-center justify-center rounded-xl border-2 border-dashed transition-all ${
+                  className={`flex aspect-[2.5/1] flex-col items-center justify-center rounded-xl border-2 border-dashed transition-all ${
                     imagePreview
                       ? "border-emerald-500 bg-bg-surface"
                       : "border-border-light hover:border-emerald-500"
@@ -275,10 +271,10 @@ const Offers: React.FC = () => {
                       </button>
                     </div>
                   ) : (
-                    <div className="flex flex-col items-center p-8 text-center">
+                    <div className="flex flex-col items-center p-6 text-center">
                       <Upload className="h-6 w-6 text-slate-300 mb-2" />
                       <p className="text-xs font-semibold text-carbon-black">
-                        Click to upload
+                        Click to upload banner
                       </p>
                       <input
                         type="file"
@@ -292,27 +288,55 @@ const Offers: React.FC = () => {
               </div>
             </div>
 
-            <Input
-              label="Offer Title"
-              name="title"
-              placeholder="e.g. 50% Off Spring Cleaning"
-              required
-              icon={<Tag className="h-4 w-4" />}
-            />
-
-            <div className="space-y-2">
-              <label className="text-[11px] font-bold uppercase tracking-widest text-slate-400">
-                Offer Description
-              </label>
-              <textarea
-                name="description"
+            {/* Titles EN & AR */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <Input
+                label="Offer Title (EN)"
+                name="title"
+                placeholder="e.g. 50% Off"
                 required
-                rows={3}
-                className="flex w-full rounded-lg border border-border-thin bg-white px-4 py-3 text-sm focus:ring-2 focus:ring-emerald-500/10 focus:border-emerald-500 outline-none transition-all"
-                placeholder="Explain the benefits of this offer..."
+                icon={<Tag className="h-4 w-4" />}
+              />
+              <Input
+                label="عنوان العرض (عربي)"
+                name="title_ar"
+                placeholder="مثال: خصم 50%"
+                required
+                dir="rtl"
+                icon={<Languages className="h-4 w-4" />}
               />
             </div>
 
+            {/* Descriptions EN & AR */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <label className="text-[11px] font-bold uppercase tracking-widest text-slate-400">
+                  Description (EN)
+                </label>
+                <textarea
+                  name="description"
+                  required
+                  rows={3}
+                  className="flex w-full rounded-lg border border-border-thin bg-white px-4 py-3 text-sm focus:border-emerald-500 outline-none transition-all"
+                  placeholder="Details in English..."
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-[11px] font-bold uppercase tracking-widest text-slate-400">
+                  الوصف (عربي)
+                </label>
+                <textarea
+                  name="description_ar"
+                  required
+                  rows={3}
+                  dir="rtl"
+                  className="flex w-full rounded-lg border border-border-thin bg-white px-4 py-3 text-sm focus:border-emerald-500 outline-none transition-all"
+                  placeholder="تفاصيل العرض بالعربي..."
+                />
+              </div>
+            </div>
+
+            {/* Category selection */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-2">
                 <label className="text-[11px] font-bold uppercase tracking-widest text-slate-400">
@@ -321,7 +345,7 @@ const Offers: React.FC = () => {
                 <select
                   name="category_id"
                   required
-                  className="w-full rounded-lg border border-border-thin bg-white px-4 py-2.5 text-sm focus:border-emerald-500 outline-none"
+                  className="w-full rounded-lg border border-border-thin bg-white px-4 py-2.5 text-sm outline-none focus:border-emerald-500"
                 >
                   <option value="">Select Category</option>
                   {categories.map((cat) => (
@@ -331,14 +355,13 @@ const Offers: React.FC = () => {
                   ))}
                 </select>
               </div>
-              {/* التخلص من الـ Input الخاص بالشركة وجعله تلقائياً */}
               <div className="space-y-2">
                 <label className="text-[11px] font-bold uppercase tracking-widest text-slate-400">
                   Status
                 </label>
-                <div className="flex items-center h-10 px-4 bg-slate-50 rounded-lg text-xs font-medium text-slate-500">
+                <div className="flex items-center h-10 px-4 bg-slate-50 rounded-lg text-xs font-medium text-slate-500 border border-border-thin">
                   <CheckCircle2 className="h-4 w-4 text-emerald-500 mr-2" />
-                  Auto-assigned to your company
+                  Linked to your company
                 </div>
               </div>
             </div>

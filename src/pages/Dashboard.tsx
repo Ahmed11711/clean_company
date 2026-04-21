@@ -108,7 +108,7 @@ const Dashboard: React.FC = () => {
       {/* Header */}
       <div>
         <h1 className="text-2xl font-semibold tracking-tight text-carbon-black">
-          {role === "admin" ? "Operations & Analytics" : "Staff Dashboard"}
+          {role === "admin" ? "Operations & Analytics" : " Dashboard"}
         </h1>
         <p className="text-text-description mt-1">
           Real-time overview of your business performance.
